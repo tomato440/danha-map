@@ -1,1 +1,733 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><meta name="theme-color" content="#000000"/><meta name="description" content="Fluid Host for Win32"/><title>Loop Component</title><script defer="defer" src="./static/js/main.e236be17.js"></script><link href="./static/css/main.c47195de.css" rel="stylesheet"></head><body><noscript>You need to enable JavaScript to run this app.</noscript><div id="animatedSplashScreen" hidden></div><div id="fluidElement"></div></body></html>
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>경복궁 맛집 가이드 🏯</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --primary: #B5451B;
+            --primary-light: #D4652A;
+            --gold: #C8943A;
+            --bg: #F8F4EE;
+            --card: #FFFFFF;
+            --text: #1A1A1A;
+            --text-muted: #6B6B6B;
+            --border: #E5DDD0;
+            --shadow: 0 2px 12px rgba(0,0,0,0.08);
+        }
+
+        body {
+            font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', -apple-system, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* ── Header ── */
+        header {
+            background: var(--primary);
+            color: white;
+            padding: 14px 24px;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+            z-index: 100;
+            flex-shrink: 0;
+        }
+        .header-logo { font-size: 28px; line-height: 1; }
+        .header-text h1 { font-size: 18px; font-weight: 700; letter-spacing: -0.3px; }
+        .header-text p  { font-size: 12px; opacity: 0.75; margin-top: 2px; }
+        .header-right { margin-left: auto; font-size: 12px; opacity: 0.7; }
+
+        /* ── Filters ── */
+        .filters {
+            background: white;
+            border-bottom: 1px solid var(--border);
+            padding: 10px 20px;
+            display: flex;
+            gap: 20px;
+            align-items: center;
+            flex-wrap: wrap;
+            flex-shrink: 0;
+            overflow-x: auto;
+        }
+        .filter-group { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+        .filter-label { font-size: 12px; font-weight: 700; color: var(--text-muted); white-space: nowrap; }
+        .filter-chip {
+            padding: 5px 13px;
+            border-radius: 20px;
+            border: 1.5px solid var(--border);
+            background: white;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.18s;
+            white-space: nowrap;
+            font-family: inherit;
+        }
+        .filter-chip:hover { border-color: var(--primary); color: var(--primary); }
+        .filter-chip.active {
+            background: var(--primary); border-color: var(--primary);
+            color: white; font-weight: 700;
+        }
+
+        /* ── Main Layout ── */
+        .main { display: flex; flex: 1; overflow: hidden; }
+
+        /* ── List Panel ── */
+        .list-panel {
+            width: 400px; min-width: 400px;
+            display: flex; flex-direction: column;
+            border-right: 1px solid var(--border);
+            background: var(--bg);
+            overflow: hidden;
+        }
+        .list-header {
+            padding: 12px 16px;
+            background: white;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-shrink: 0;
+        }
+        .list-header .count { font-size: 14px; }
+        .list-header .count strong { color: var(--primary); }
+        .sort-select {
+            border: 1px solid var(--border); border-radius: 8px;
+            padding: 5px 10px; font-size: 12px;
+            background: white; cursor: pointer;
+            font-family: inherit;
+        }
+
+        .restaurant-list {
+            overflow-y: auto; flex: 1;
+            padding: 10px;
+            display: flex; flex-direction: column; gap: 8px;
+        }
+
+        /* ── Restaurant Card ── */
+        .restaurant-card {
+            background: white;
+            border-radius: 12px;
+            border: 1.5px solid var(--border);
+            overflow: hidden;
+            cursor: pointer;
+            transition: all 0.18s;
+            display: flex;
+            flex-shrink: 0;
+        }
+        .restaurant-card:hover {
+            border-color: var(--primary);
+            box-shadow: var(--shadow);
+            transform: translateY(-1px);
+        }
+        .restaurant-card.active {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(181,69,27,0.12);
+        }
+        .card-photo {
+            width: 96px; min-width: 96px;
+            background: #e8dfd4;
+            overflow: hidden;
+        }
+        .card-photo img { width: 100%; height: 100%; object-fit: cover; }
+        .card-photo-placeholder {
+            width: 100%; height: 100%; min-height: 96px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 30px;
+            background: linear-gradient(135deg, #f0e8df, #ddd0c4);
+        }
+        .card-body { padding: 10px 12px; flex: 1; min-width: 0; }
+        .card-name {
+            font-size: 14px; font-weight: 700; margin-bottom: 4px;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .card-meta {
+            display: flex; align-items: center; gap: 6px; margin-bottom: 5px;
+        }
+        .stars-text { color: #E8A020; font-size: 12px; letter-spacing: 1px; }
+        .rating-num { font-size: 12px; font-weight: 700; }
+        .review-cnt { font-size: 11px; color: var(--text-muted); }
+        .price-tag { font-size: 12px; color: var(--primary); font-weight: 700; margin-left: auto; }
+        .card-tags { display: flex; gap: 5px; margin-bottom: 5px; flex-wrap: wrap; }
+        .tag {
+            font-size: 11px; padding: 2px 7px; border-radius: 4px;
+            background: #F0EBE3; color: var(--text-muted);
+        }
+        .open-badge {
+            font-size: 11px; padding: 2px 7px; border-radius: 4px; font-weight: 600;
+        }
+        .open-badge.open   { background: #E8F5E9; color: #2E7D32; }
+        .open-badge.closed { background: #FFEBEE; color: #C62828; }
+        .card-addr {
+            font-size: 11px; color: var(--text-muted);
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+
+        /* ── Map ── */
+        #map { flex: 1; }
+
+        /* ── Detail Panel ── */
+        .detail-panel {
+            position: fixed; top: 0; right: -500px;
+            width: 460px; height: 100%;
+            background: white;
+            box-shadow: -4px 0 24px rgba(0,0,0,0.18);
+            z-index: 300;
+            transition: right 0.28s cubic-bezier(.4,0,.2,1);
+            display: flex; flex-direction: column;
+            overflow: hidden;
+        }
+        .detail-panel.open { right: 0; }
+
+        .detail-close {
+            position: absolute; top: 12px; right: 12px;
+            width: 34px; height: 34px; border-radius: 50%;
+            background: rgba(255,255,255,0.92);
+            border: none; cursor: pointer; font-size: 16px;
+            display: flex; align-items: center; justify-content: center;
+            z-index: 10; box-shadow: 0 2px 8px rgba(0,0,0,0.18);
+            font-family: inherit;
+        }
+        .detail-cover {
+            width: 100%; height: 210px; object-fit: cover;
+            background: #e8dfd4; flex-shrink: 0;
+        }
+        .detail-cover-placeholder {
+            width: 100%; height: 210px; flex-shrink: 0;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 60px;
+            background: linear-gradient(135deg, #f0e8df, #ddd0c4);
+        }
+        .detail-scroll { flex: 1; overflow-y: auto; padding: 18px 20px; }
+        .detail-name { font-size: 20px; font-weight: 700; margin-bottom: 8px; line-height: 1.3; }
+        .detail-rating-row {
+            display: flex; align-items: center; gap: 10px; margin-bottom: 10px; flex-wrap: wrap;
+        }
+        .detail-stars { color: #E8A020; font-size: 16px; }
+        .detail-rating-num { font-size: 17px; font-weight: 700; }
+        .detail-review-cnt { font-size: 13px; color: var(--text-muted); }
+        .detail-price-tag { font-size: 15px; color: var(--primary); font-weight: 700; }
+
+        .section { margin-bottom: 18px; }
+        .section-title {
+            font-size: 11px; font-weight: 700; letter-spacing: 0.8px;
+            text-transform: uppercase; color: var(--text-muted);
+            margin-bottom: 10px; padding-bottom: 6px;
+            border-bottom: 1px solid var(--border);
+        }
+        .info-row {
+            display: flex; align-items: flex-start; gap: 10px;
+            padding: 5px 0; font-size: 13px; line-height: 1.5;
+        }
+        .info-icon { width: 18px; flex-shrink: 0; text-align: center; }
+        .info-link { color: var(--primary); text-decoration: none; word-break: break-all; }
+        .info-link:hover { text-decoration: underline; }
+
+        .hours-grid { font-size: 12px; }
+        .hours-row { padding: 3px 0; }
+        .hours-today { color: var(--primary); font-weight: 700; }
+
+        .review-card { background: var(--bg); border-radius: 10px; padding: 12px 14px; margin-bottom: 8px; }
+        .review-header { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+        .review-author { font-size: 13px; font-weight: 600; }
+        .review-stars { color: #E8A020; font-size: 11px; }
+        .review-time { font-size: 11px; color: var(--text-muted); margin-left: auto; }
+        .review-text { font-size: 12px; line-height: 1.65; color: #333; }
+
+        .detail-actions {
+            display: flex; gap: 10px; padding: 14px 18px;
+            border-top: 1px solid var(--border); flex-shrink: 0;
+        }
+        .btn {
+            flex: 1; padding: 11px; border-radius: 10px;
+            border: none; font-size: 13px; font-weight: 700;
+            cursor: pointer; transition: all 0.18s; font-family: inherit;
+        }
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-primary:hover { background: var(--primary-light); }
+        .btn-secondary {
+            background: var(--bg); color: var(--text);
+            border: 1.5px solid var(--border);
+        }
+        .btn-secondary:hover { border-color: var(--primary); color: var(--primary); }
+
+        /* ── Loading / Error / Empty ── */
+        .state-view {
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            padding: 40px 20px; text-align: center; gap: 10px;
+            color: var(--text-muted);
+        }
+        .state-icon { font-size: 44px; }
+        .state-text { font-size: 14px; }
+        .state-sub { font-size: 12px; opacity: 0.7; }
+        .spinner {
+            width: 34px; height: 34px;
+            border: 3px solid var(--border); border-top-color: var(--primary);
+            border-radius: 50%; animation: spin 0.75s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* ── Scrollbar ── */
+        ::-webkit-scrollbar { width: 5px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #d5c8bc; border-radius: 3px; }
+
+        /* ── Overlay ── */
+        .overlay {
+            display: none; position: fixed; inset: 0;
+            background: rgba(0,0,0,0.18); z-index: 250;
+        }
+        .overlay.show { display: block; }
+
+        /* ── Responsive ── */
+        @media (max-width: 768px) {
+            .main { flex-direction: column; }
+            .list-panel { width: 100%; min-width: unset; max-height: 45vh; }
+            #map { min-height: 55vw; }
+            .detail-panel { width: 100%; right: -100%; }
+            .detail-panel.open { right: 0; }
+            .filters { gap: 12px; }
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <div class="header-logo">🏯</div>
+    <div class="header-text">
+        <h1>경복궁 맛집 가이드</h1>
+        <p>경복궁 주변 500m · Google Maps 데이터</p>
+    </div>
+    <div class="header-right">danha-map</div>
+</header>
+
+<div class="filters">
+    <div class="filter-group">
+        <span class="filter-label">카테고리</span>
+        <button class="filter-chip active" onclick="setFilter('category','all',this)">전체</button>
+        <button class="filter-chip" onclick="setFilter('category','korean',this)">🍚 한식</button>
+        <button class="filter-chip" onclick="setFilter('category','japanese',this)">🍣 일식</button>
+        <button class="filter-chip" onclick="setFilter('category','chinese',this)">🥟 중식</button>
+        <button class="filter-chip" onclick="setFilter('category','western',this)">🍝 양식</button>
+        <button class="filter-chip" onclick="setFilter('category','cafe',this)">☕ 카페</button>
+    </div>
+    <div class="filter-group">
+        <span class="filter-label">가격대</span>
+        <button class="filter-chip active" onclick="setFilter('price','all',this)">전체</button>
+        <button class="filter-chip" onclick="setFilter('price','1',this)">₩</button>
+        <button class="filter-chip" onclick="setFilter('price','2',this)">₩₩</button>
+        <button class="filter-chip" onclick="setFilter('price','3',this)">₩₩₩</button>
+    </div>
+    <div class="filter-group">
+        <span class="filter-label">평점</span>
+        <button class="filter-chip active" onclick="setFilter('rating','all',this)">전체</button>
+        <button class="filter-chip" onclick="setFilter('rating','4.0',this)">4.0+</button>
+        <button class="filter-chip" onclick="setFilter('rating','4.5',this)">4.5+</button>
+    </div>
+</div>
+
+<div class="main">
+    <div class="list-panel">
+        <div class="list-header">
+            <span class="count">맛집 <strong id="result-count">0</strong>곳</span>
+            <select class="sort-select" onchange="setSort(this.value)">
+                <option value="rating">⭐ 평점 높은순</option>
+                <option value="reviews">💬 리뷰 많은순</option>
+            </select>
+        </div>
+        <div class="restaurant-list" id="restaurant-list">
+            <div class="state-view">
+                <div class="spinner"></div>
+                <p class="state-text">맛집을 찾고 있어요...</p>
+            </div>
+        </div>
+    </div>
+    <div id="map"></div>
+</div>
+
+<div class="overlay" id="overlay" onclick="closeDetail()"></div>
+<div class="detail-panel" id="detail-panel">
+    <button class="detail-close" onclick="closeDetail()">✕</button>
+    <div id="detail-inner"></div>
+</div>
+
+<script>
+/* ──────────────────────────────
+   State
+────────────────────────────── */
+let map, svc, infoWin;
+let allPlaces = [];
+let filteredPlaces = [];
+let markers = {};
+let filters = { category: 'all', price: 'all', rating: 'all' };
+let sortBy = 'rating';
+let activePlaceId = null;
+
+/* Category helpers */
+const CAT_TYPES = {
+    korean:   ['korean_restaurant'],
+    japanese: ['japanese_restaurant'],
+    chinese:  ['chinese_restaurant'],
+    western:  ['italian_restaurant','american_restaurant','french_restaurant','restaurant'],
+    cafe:     ['cafe','bakery','coffee_shop']
+};
+const CAT_KW = {
+    korean:   ['한식','국밥','갈비','삼겹','비빔','순두부','냉면','칼국수','삼계탕','설렁탕','곰탕','순대','김치','막국수'],
+    japanese: ['일식','스시','라멘','우동','돈카츠','야끼니꾸','오마카세','sushi','ramen'],
+    chinese:  ['중식','짜장','짬뽕','마라','탕수육','딤섬'],
+    western:  ['양식','피자','파스타','버거','스테이크','브런치','pizza','pasta','burger'],
+    cafe:     ['카페','커피','베이커리','디저트','케이크','cafe','coffee','bakery']
+};
+const CAT_EMOJI = { korean:'🍚', japanese:'🍣', chinese:'🥟', western:'🍝', cafe:'☕', other:'🍽️' };
+
+/* ──────────────────────────────
+   Map init
+────────────────────────────── */
+function initMap() {
+    const center = { lat: 37.5796, lng: 126.9770 };
+
+    map = new google.maps.Map(document.getElementById('map'), {
+        center, zoom: 16,
+        mapTypeControl: false,
+        streetViewControl: false,
+        fullscreenControl: true,
+        styles: [
+            { featureType:'poi.business', elementType:'labels', stylers:[{visibility:'off'}] }
+        ]
+    });
+
+    infoWin = new google.maps.InfoWindow();
+
+    // Palace landmark marker
+    new google.maps.Marker({
+        position: center, map,
+        title: '경복궁',
+        icon: {
+            url: 'https://maps.google.com/mapfiles/ms/icons/blue-dot.png'
+        },
+        zIndex: 9999
+    });
+
+    svc = new google.maps.places.PlacesService(map);
+    fetchNearby('restaurant', () => fetchNearby('cafe', finalize));
+}
+
+/* ──────────────────────────────
+   Data fetching
+────────────────────────────── */
+function fetchNearby(type, onDone) {
+    const req = {
+        location: new google.maps.LatLng(37.5796, 126.9770),
+        radius: 500, type, language: 'ko'
+    };
+    function handle(results, status, paging) {
+        if (status === google.maps.places.PlacesServiceStatus.OK) {
+            const seen = new Set(allPlaces.map(p => p.place_id));
+            results.filter(p => !seen.has(p.place_id)).forEach(p => allPlaces.push(p));
+            if (paging && paging.hasNextPage && allPlaces.length < 80) {
+                setTimeout(() => paging.nextPage(), 300);
+            } else { onDone(); }
+        } else { onDone(); }
+    }
+    svc.nearbySearch(req, handle);
+}
+
+function finalize() {
+    allPlaces = allPlaces.filter(p => p.rating);
+    allPlaces.forEach(addMarker);
+    applyFilters();
+}
+
+/* ──────────────────────────────
+   Markers
+────────────────────────────── */
+function markerIcon(isActive) {
+    return {
+        path: google.maps.SymbolPath.CIRCLE,
+        scale: isActive ? 13 : 9,
+        fillColor: isActive ? '#C8943A' : '#B5451B',
+        fillOpacity: 0.95,
+        strokeColor: 'white',
+        strokeWeight: isActive ? 3 : 2
+    };
+}
+
+function addMarker(place) {
+    if (markers[place.place_id] || !place.geometry?.location) return;
+    const m = new google.maps.Marker({
+        position: place.geometry.location,
+        map, title: place.name,
+        icon: markerIcon(false)
+    });
+    m.addListener('click', () => {
+        openDetail(place.place_id);
+        scrollToCard(place.place_id);
+    });
+    markers[place.place_id] = m;
+}
+
+/* ──────────────────────────────
+   Filters & Sort
+────────────────────────────── */
+function setFilter(type, val, el) {
+    filters[type] = val;
+    el.closest('.filter-group').querySelectorAll('.filter-chip')
+      .forEach(c => c.classList.remove('active'));
+    el.classList.add('active');
+    applyFilters();
+}
+
+function setSort(val) { sortBy = val; applyFilters(); }
+
+function getCategory(place) {
+    const types = place.types || [];
+    const name  = (place.name || '').toLowerCase();
+    for (const cat of ['korean','japanese','chinese','cafe','western']) {
+        const tMatch = (CAT_TYPES[cat] || []).some(t => types.includes(t));
+        const kMatch = (CAT_KW[cat]    || []).some(k => name.includes(k));
+        if (tMatch || kMatch) return cat;
+    }
+    return 'other';
+}
+
+function applyFilters() {
+    filteredPlaces = allPlaces.filter(p => {
+        if (filters.category !== 'all' && getCategory(p) !== filters.category) return false;
+        if (filters.price    !== 'all' && p.price_level !== +filters.price)      return false;
+        if (filters.rating   !== 'all' && (!p.rating || p.rating < +filters.rating)) return false;
+        return true;
+    });
+
+    filteredPlaces.sort((a, b) =>
+        sortBy === 'rating'
+            ? (b.rating || 0) - (a.rating || 0)
+            : (b.user_ratings_total || 0) - (a.user_ratings_total || 0)
+    );
+
+    const visible = new Set(filteredPlaces.map(p => p.place_id));
+    Object.entries(markers).forEach(([id, m]) => {
+        m.setMap(visible.has(id) ? map : null);
+    });
+
+    renderList();
+}
+
+/* ──────────────────────────────
+   Render list
+────────────────────────────── */
+function renderList() {
+    const el = document.getElementById('restaurant-list');
+    document.getElementById('result-count').textContent = filteredPlaces.length;
+
+    if (!filteredPlaces.length) {
+        el.innerHTML = `
+            <div class="state-view">
+                <div class="state-icon">🍽️</div>
+                <p class="state-text">조건에 맞는 맛집이 없어요</p>
+                <p class="state-sub">필터를 변경해 보세요</p>
+            </div>`;
+        return;
+    }
+
+    el.innerHTML = filteredPlaces.map(p => cardHTML(p)).join('');
+}
+
+function cardHTML(p) {
+    const cat     = getCategory(p);
+    const emoji   = CAT_EMOJI[cat] || '🍽️';
+    const label   = { korean:'한식', japanese:'일식', chinese:'중식', western:'양식', cafe:'카페', other:'' }[cat] || '';
+    const photo   = p.photos?.[0]?.getUrl({ maxWidth: 200, maxHeight: 200 });
+    const price   = priceStr(p.price_level);
+    const openTag = p.opening_hours
+        ? `<span class="open-badge ${p.opening_hours.open_now ? 'open' : 'closed'}">${p.opening_hours.open_now ? '영업중' : '영업종료'}</span>`
+        : '';
+
+    return `
+        <div class="restaurant-card ${activePlaceId === p.place_id ? 'active' : ''}"
+             id="card-${p.place_id}"
+             onclick="openDetail('${p.place_id}')">
+            <div class="card-photo">
+                ${photo
+                    ? `<img src="${photo}" alt="${escHtml(p.name)}" loading="lazy" />`
+                    : `<div class="card-photo-placeholder">${emoji}</div>`}
+            </div>
+            <div class="card-body">
+                <div class="card-name">${escHtml(p.name)}</div>
+                <div class="card-meta">
+                    <span class="stars-text">${starsStr(p.rating)}</span>
+                    <span class="rating-num">${p.rating?.toFixed(1) ?? '-'}</span>
+                    <span class="review-cnt">(${fmtNum(p.user_ratings_total)})</span>
+                    ${price ? `<span class="price-tag">${price}</span>` : ''}
+                </div>
+                <div class="card-tags">
+                    ${label ? `<span class="tag">${label}</span>` : ''}
+                    ${openTag}
+                </div>
+                <div class="card-addr">${escHtml(p.vicinity || '')}</div>
+            </div>
+        </div>`;
+}
+
+/* ──────────────────────────────
+   Detail panel
+────────────────────────────── */
+function openDetail(placeId) {
+    activePlaceId = placeId;
+    renderList();
+    scrollToCard(placeId);
+
+    // Highlight marker
+    Object.entries(markers).forEach(([id, m]) => {
+        if (markers[id]?.getMap()) m.setIcon(markerIcon(id === placeId));
+    });
+
+    // Pan map
+    const p = allPlaces.find(x => x.place_id === placeId);
+    if (p?.geometry?.location) {
+        map.panTo(p.geometry.location);
+        map.setZoom(17);
+    }
+
+    // Open panel with loading state
+    document.getElementById('detail-inner').innerHTML = `
+        <div class="state-view" style="margin-top:80px;">
+            <div class="spinner"></div>
+            <p class="state-text">정보를 불러오는 중...</p>
+        </div>`;
+    document.getElementById('detail-panel').classList.add('open');
+    document.getElementById('overlay').classList.add('show');
+
+    svc.getDetails({
+        placeId,
+        fields: ['name','rating','user_ratings_total','price_level',
+                 'formatted_address','formatted_phone_number',
+                 'opening_hours','photos','reviews','website','types','url'],
+        language: 'ko'
+    }, (detail, status) => {
+        if (status === google.maps.places.PlacesServiceStatus.OK) renderDetail(detail);
+        else document.getElementById('detail-inner').innerHTML =
+            `<div class="state-view" style="margin-top:80px;"><div class="state-icon">😢</div><p class="state-text">정보를 불러올 수 없어요</p></div>`;
+    });
+}
+
+function renderDetail(p) {
+    const photo = p.photos?.[0]?.getUrl({ maxWidth: 500, maxHeight: 260 });
+    const cat   = getCategory(p);
+    const emoji = CAT_EMOJI[cat] || '🍽️';
+    const label = { korean:'한식', japanese:'일식', chinese:'중식', western:'양식', cafe:'카페·베이커리', other:'음식점' }[cat];
+    const price = priceStr(p.price_level);
+    const openBadge = p.opening_hours
+        ? `<span class="open-badge ${p.opening_hours.open_now ? 'open' : 'closed'}" style="font-size:13px;padding:4px 10px;">${p.opening_hours.open_now ? '현재 영업중 ✓' : '현재 영업종료'}</span>`
+        : '';
+
+    const hoursHTML = p.opening_hours?.weekday_text?.length
+        ? p.opening_hours.weekday_text.map((h, i) => {
+            const today = (new Date().getDay() + 6) % 7; // Mon=0
+            return `<div class="hours-row ${i === today ? 'hours-today' : ''}">${escHtml(h)}</div>`;
+          }).join('')
+        : '<div style="color:var(--text-muted);font-size:13px;">영업시간 정보 없음</div>';
+
+    const reviewsHTML = p.reviews?.length
+        ? p.reviews.slice(0, 3).map(r => `
+            <div class="review-card">
+                <div class="review-header">
+                    <span class="review-author">${escHtml(r.author_name)}</span>
+                    <span class="review-stars">${starsStr(r.rating)}</span>
+                    <span class="review-time">${escHtml(r.relative_time_description)}</span>
+                </div>
+                <div class="review-text">${escHtml(r.text || '내용 없음')}</div>
+            </div>`).join('')
+        : '<div style="color:var(--text-muted);font-size:13px;">등록된 리뷰가 없습니다.</div>';
+
+    document.getElementById('detail-inner').innerHTML = `
+        ${photo
+            ? `<img src="${photo}" class="detail-cover" alt="${escHtml(p.name)}" />`
+            : `<div class="detail-cover-placeholder">${emoji}</div>`}
+        <div class="detail-scroll">
+            <div class="detail-name">${escHtml(p.name)}</div>
+            <div class="detail-rating-row">
+                <span class="detail-stars">${starsStr(p.rating)}</span>
+                <span class="detail-rating-num">${p.rating?.toFixed(1) ?? '-'}</span>
+                <span class="detail-review-cnt">리뷰 ${fmtNum(p.user_ratings_total)}개</span>
+                ${price ? `<span class="detail-price-tag">${price}</span>` : ''}
+            </div>
+            ${openBadge ? `<div style="margin-bottom:14px;">${openBadge}</div>` : ''}
+
+            <div class="section">
+                <div class="section-title">기본 정보</div>
+                ${label ? `<div class="info-row"><span class="info-icon">🍽️</span><span>${label}</span></div>` : ''}
+                ${p.formatted_address ? `<div class="info-row"><span class="info-icon">📍</span><span>${escHtml(p.formatted_address)}</span></div>` : ''}
+                ${p.formatted_phone_number ? `<div class="info-row"><span class="info-icon">📞</span><a class="info-link" href="tel:${p.formatted_phone_number}">${escHtml(p.formatted_phone_number)}</a></div>` : ''}
+                ${p.website ? `<div class="info-row"><span class="info-icon">🌐</span><a class="info-link" href="${p.website}" target="_blank" rel="noopener">${new URL(p.website).hostname}</a></div>` : ''}
+            </div>
+
+            <div class="section">
+                <div class="section-title">영업시간</div>
+                <div class="hours-grid">${hoursHTML}</div>
+            </div>
+
+            <div class="section">
+                <div class="section-title">구글 리뷰 TOP 3</div>
+                ${reviewsHTML}
+            </div>
+        </div>
+        <div class="detail-actions">
+            ${p.url ? `<button class="btn btn-primary" onclick="window.open('${p.url}','_blank')">🗺️ 구글 맵에서 보기</button>` : ''}
+            ${p.formatted_phone_number ? `<button class="btn btn-secondary" onclick="location.href='tel:${p.formatted_phone_number}'">📞 전화하기</button>` : ''}
+        </div>`;
+}
+
+function closeDetail() {
+    document.getElementById('detail-panel').classList.remove('open');
+    document.getElementById('overlay').classList.remove('show');
+    activePlaceId = null;
+    Object.values(markers).forEach(m => { if (m.getMap()) m.setIcon(markerIcon(false)); });
+    renderList();
+}
+
+/* ──────────────────────────────
+   Helpers
+────────────────────────────── */
+function scrollToCard(id) {
+    const el = document.getElementById(`card-${id}`);
+    el?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function starsStr(r) {
+    if (!r) return '☆☆☆☆☆';
+    const f = Math.floor(r), h = r - f >= 0.5 ? 1 : 0, e = 5 - f - h;
+    return '★'.repeat(f) + (h ? '½' : '') + '☆'.repeat(e);
+}
+
+function priceStr(lvl) {
+    return ['','₩','₩₩','₩₩₩','₩₩₩₩'][lvl] ?? '';
+}
+
+function fmtNum(n) {
+    if (!n) return '0';
+    return n >= 1000 ? (n / 1000).toFixed(1) + 'k' : String(n);
+}
+
+function escHtml(s) {
+    return String(s ?? '')
+        .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+        .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+</script>
+
+<!-- Google Maps JavaScript API (Places library) -->
+<script async defer
+    src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBKctLSKet2mCvnpRgqIZO1YUlK2cSCtj0&libraries=places&callback=initMap&language=ko&region=KR">
+</script>
+
+</body>
+</html>
